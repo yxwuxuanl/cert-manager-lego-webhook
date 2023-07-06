@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      name: {{ .Release.Name }}
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ .Release.Name }}
+      serviceAccountName: {{ .Release.Name }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: '{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}'
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /tls
+              name: tls
+          env:
+            - name: GROUP_NAME
+              value: {{ .Values.groupName }}
+            - name: CERT_MANAGER_NAMESPACE
+              value: {{ .Values.certManager.namespace }}
+            {{- range $name, $value := .Values.webhook.envs }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          args:
+            - --tls-cert-file=/tls/tls.crt
+            - --tls-private-key-file=/tls/tls.key
+          resources:
+            {{- toYaml .Values.webhook.resources | nindent 12 }}
+          ports:
+            - containerPort: 443
+              name: https
+          readinessProbe:
+            httpGet:
+              port: https
+              path: /healthz
+            initialDelaySeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+            timeoutSeconds: 5
+            periodSeconds: 4
+      restartPolicy: Always

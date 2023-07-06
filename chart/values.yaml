@@ -1,0 +1,12 @@
+groupName: ''
+
+webhook:
+  image:
+    repository: ''
+    tag: ''
+  resources: { }
+  envs: { }
+
+certManager:
+  namespace: cert-manager
+  serviceAccountName: cert-manager
