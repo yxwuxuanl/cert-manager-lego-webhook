@@ -3,7 +3,7 @@ groupName: ''
 webhook:
   image:
     repository: ghcr.io/yxwuxuanl/cert-manager-lego-webhook
-    tag: main
+    tag: ''
   resources: { }
   envs: { }
 

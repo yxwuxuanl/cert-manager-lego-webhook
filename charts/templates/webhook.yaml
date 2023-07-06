@@ -22,7 +22,7 @@ spec:
       serviceAccountName: {{ .Release.Name }}
       containers:
         - name: {{ .Release.Name }}
-          image: '{{ .Values.webhook.image.repository }}:{{ .Values.webhook.image.tag }}'
+          image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - mountPath: /tls
