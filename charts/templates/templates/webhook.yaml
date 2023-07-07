@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
   labels:
-    app: {{ .Release.Name }}
+    app: {{ include "appname" . }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app: {{ include "appname" . }}
   template:
     metadata:
-      name: {{ .Release.Name }}
+      name: {{ include "appname" . }}
       labels:
-        app: {{ .Release.Name }}
+        app: {{ include "appname" . }}
     spec:
       volumes:
         - name: tls
           secret:
-            secretName: {{ .Release.Name }}
-      serviceAccountName: {{ .Release.Name }}
+            secretName: {{ include "appname" . }}
+      serviceAccountName: {{ include "appname" . }}
       containers:
-        - name: {{ .Release.Name }}
+        - name: {{ include "appname" . }}
           image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
           imagePullPolicy: IfNotPresent
           volumeMounts:

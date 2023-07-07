@@ -1,7 +1,7 @@
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
-  name: {{ .Release.Name }}-selfsign
+  name: {{ include "appname" . }}-selfsign
 spec:
   selfSigned: { }
 
@@ -9,36 +9,36 @@ spec:
 kind: Certificate
 apiVersion: cert-manager.io/v1
 metadata:
-  name: {{ .Release.Name }}-ca
+  name: {{ include "appname" . }}-ca
 spec:
   issuerRef:
-    name: {{ .Release.Name }}-selfsign
-  secretName: {{ .Release.Name }}-ca
+    name: {{ include "appname" . }}-selfsign
+  secretName: {{ include "appname" . }}-ca
   duration: '{{ mul 10 365 24 }}h'
-  commonName: 'ca.{{ .Release.Name }}.{{ .Release.Namespace }}'
+  commonName: 'ca.{{ include "appname" . }}.{{ .Release.Namespace }}'
   isCA: true
 
 ---
 kind: Issuer
 apiVersion: cert-manager.io/v1
 metadata:
-  name: {{ .Release.Name }}-ca
+  name: {{ include "appname" . }}-ca
 spec:
   ca:
-    secretName: {{ .Release.Name }}-ca
+    secretName: {{ include "appname" . }}-ca
 
 ---
 kind: Certificate
 apiVersion: cert-manager.io/v1
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
 spec:
   issuerRef:
-    name: {{ .Release.Name }}-ca
-  secretName: {{ .Release.Name }}
+    name: {{ include "appname" . }}-ca
+  secretName: {{ include "appname" . }}
   duration: '{{ mul 365 24 }}h'
   dnsNames:
-    - {{ .Release.Name }}
-    - {{ .Release.Name }}.{{ .Release.Namespace }}
-    - {{ .Release.Name }}.{{ .Release.Namespace }}.svc
-    - {{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local
+    - {{ include "appname" . }}
+    - {{ include "appname" . }}.{{ .Release.Namespace }}
+    - {{ include "appname" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "appname" . }}.{{ .Release.Namespace }}.svc.cluster.local

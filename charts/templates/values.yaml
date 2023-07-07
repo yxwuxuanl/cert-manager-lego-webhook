@@ -1,5 +1,7 @@
 groupName: ''
 
+nameOverride: ''
+
 webhook:
   image:
     repository: ghcr.io/yxwuxuanl/cert-manager-lego-webhook

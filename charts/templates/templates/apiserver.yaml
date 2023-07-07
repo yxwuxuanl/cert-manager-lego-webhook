@@ -10,5 +10,5 @@ spec:
   group: {{ .Values.groupName }}
   version: v1alpha1
   service:
-    name: {{ .Release.Name }}
+    name: {{ include "appname" . }}
     namespace: {{ .Release.Namespace }}
