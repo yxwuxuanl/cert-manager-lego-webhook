@@ -8,7 +8,9 @@ webhook:
     tag: ''
   resources: { }
   envs: { }
+  nodeSelector: { }
+  extraArgs: [ ]
 
 certManager:
-  namespace: cert-manager
+  namespace: ''
   serviceAccountName: cert-manager

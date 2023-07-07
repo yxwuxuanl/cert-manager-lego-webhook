@@ -1,7 +1,3 @@
 {{- define "appname" -}}
-{{- if .Values.nameOverride }}
-{{ tpl .Values.nameOverride . }}
-{{- else }}
-{{ .Release.Name }}
-{{- end }}
+{{- ternary .Release.Name (tpl .Values.nameOverride .) (not .Values.nameOverride) }}
 {{- end -}}
