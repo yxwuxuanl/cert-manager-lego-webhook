@@ -1,12 +1,16 @@
 groupName: ''
 
+nameOverride: ''
+
 webhook:
   image:
     repository: ghcr.io/yxwuxuanl/cert-manager-lego-webhook
     tag: ''
   resources: { }
   envs: { }
+  nodeSelector: { }
+  extraArgs: [ ]
 
 certManager:
-  namespace: cert-manager
+  namespace: ''
   serviceAccountName: cert-manager

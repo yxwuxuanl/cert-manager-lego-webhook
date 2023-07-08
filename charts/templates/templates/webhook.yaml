@@ -1,27 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
   labels:
-    app: {{ .Release.Name }}
+    app: {{ include "appname" . }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app: {{ include "appname" . }}
   template:
     metadata:
-      name: {{ .Release.Name }}
+      name: {{ include "appname" . }}
       labels:
-        app: {{ .Release.Name }}
+        app: {{ include "appname" . }}
     spec:
       volumes:
         - name: tls
           secret:
-            secretName: {{ .Release.Name }}
-      serviceAccountName: {{ .Release.Name }}
+            secretName: {{ include "appname" . }}
+      serviceAccountName: {{ include "appname" . }}
+      nodeSelector:
+        {{- toYaml .Values.webhook.nodeSelector | nindent 8 }}
       containers:
-        - name: {{ .Release.Name }}
+        - name: {{ include "appname" . }}
           image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
           imagePullPolicy: IfNotPresent
           volumeMounts:
@@ -31,7 +33,7 @@ spec:
             - name: GROUP_NAME
               value: {{ .Values.groupName }}
             - name: CERT_MANAGER_NAMESPACE
-              value: {{ .Values.certManager.namespace }}
+              value: {{ default .Release.Namespace .Values.certManager.namespace }}
             {{- range $name, $value := .Values.webhook.envs }}
             - name: {{ $name }}
               value: {{ $value | quote }}
@@ -39,16 +41,25 @@ spec:
           args:
             - --tls-cert-file=/tls/tls.crt
             - --tls-private-key-file=/tls/tls.key
+            - --secure-port=8443
+            {{- range .Values.webhook.extraArgs }}
+            - {{ . }}
+            {{- end }}
           resources:
             {{- toYaml .Values.webhook.resources | nindent 12 }}
           ports:
-            - containerPort: 443
+            - containerPort: 8443
               name: https
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
           readinessProbe:
             httpGet:
               port: https
               path: /healthz
-            initialDelaySeconds: 5
+              scheme: HTTPS
+            initialDelaySeconds: 10
             successThreshold: 1
             failureThreshold: 5
             timeoutSeconds: 5

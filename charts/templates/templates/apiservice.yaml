@@ -3,12 +3,12 @@ kind: APIService
 metadata:
   name: v1alpha1.{{ required "`.Values.groupName` is required" .Values.groupName }}
   annotations:
-    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ .Release.Name }}"
+    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ include "appname" . }}'
 spec:
   groupPriorityMinimum: 1000
   versionPriority: 15
   group: {{ .Values.groupName }}
   version: v1alpha1
   service:
-    name: {{ .Release.Name }}
+    name: {{ include "appname" . }}
     namespace: {{ .Release.Namespace }}

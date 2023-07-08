@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
 
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
 rules:
   - verbs:
       - get
@@ -43,7 +43,7 @@ rules:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}-cert-manager
+  name: {{ include "appname" . }}-cert-manager
 rules:
   - apiGroups:
       - {{ .Values.groupName }}
@@ -56,26 +56,26 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}-cert-manager
+  name: {{ include "appname" . }}-cert-manager
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.certManager.serviceAccountName }}
-    namespace: {{ .Values.certManager.namespace }}
+    namespace: {{ default .Release.Namespace .Values.certManager.namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Release.Name }}-cert-manager
+  name: {{ include "appname" . }}-cert-manager
 
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
+    name: {{ include "appname" . }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Release.Name }}
+  name: {{ include "appname" . }}
