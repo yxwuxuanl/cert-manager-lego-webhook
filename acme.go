@@ -19,15 +19,14 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func (solver *LegoSolver) getChallenge(namespace, dnsName, key string) *acmev1.Challenge {
+func (solver *LegoSolver) getChallenge(dnsName, key string) *acmev1.Challenge {
 	for _, obj := range solver.challengeIndexer.List() {
 		ch, ok := obj.(*acmev1.Challenge)
 		if !ok {
 			continue
 		}
 
-		if ch.Namespace == namespace &&
-			ch.Spec.Type == acmev1.ACMEChallengeTypeDNS01 &&
+		if ch.Spec.Type == acmev1.ACMEChallengeTypeDNS01 &&
 			ch.Spec.DNSName == dnsName &&
 			ch.Spec.Key == key {
 			klog.InfoS("match challenge", "name", ch.Name, "namespace", ch.Namespace, "dnsName", dnsName)
@@ -82,7 +81,7 @@ func (solver *LegoSolver) getIssuerPrivKey(issuerRef cmapisv1.ObjectReference, n
 }
 
 func (solver *LegoSolver) getKeyAuthorization(namespace, dnsName, key string) (string, error) {
-	ch := solver.getChallenge(namespace, dnsName, key)
+	ch := solver.getChallenge(dnsName, key)
 	if ch == nil {
 		return "", errors.New("no challenge match")
 	}
