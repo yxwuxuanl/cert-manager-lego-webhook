@@ -25,7 +25,7 @@ spec:
       containers:
         - name: {{ include "appname" . }}
           image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ ternary "IfNotPresent" "Always" (ne .Values.webhook.image.tag "main") }}
           volumeMounts:
             - mountPath: /tls
               name: tls
