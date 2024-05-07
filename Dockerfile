@@ -1,4 +1,4 @@
-FROM golang:1.20 AS builder
+FROM golang:1.22.2 AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GO11MODULE=on go build -o webhook .
+RUN CGO_ENABLED=0 GO11MODULE=on go build -ldflags="-s -w" -o webhook .
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=builder --chown=nonroot:nonroot /app/webhook /webhook

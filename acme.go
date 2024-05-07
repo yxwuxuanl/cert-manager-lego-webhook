@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -12,98 +11,99 @@ import (
 	"errors"
 	"fmt"
 	acmev1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
-	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	cmapisv1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmanagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	"github.com/go-jose/go-jose/v3"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog/v2"
 )
 
-func (solver *LegoSolver) getChallenge(dnsName, key string) *acmev1.Challenge {
-	for _, obj := range solver.challengeIndexer.List() {
-		ch, ok := obj.(*acmev1.Challenge)
-		if !ok {
-			continue
-		}
-
-		if ch.Spec.Type == acmev1.ACMEChallengeTypeDNS01 &&
-			ch.Spec.DNSName == dnsName &&
-			ch.Spec.Key == key {
-			klog.InfoS("match challenge", "name", ch.Name, "namespace", ch.Namespace, "dnsName", dnsName)
-			return ch
-		}
-	}
-
-	return nil
-}
-
-func (solver *LegoSolver) getIssuerPrivKey(issuerRef cmapisv1.ObjectReference, namespace string) (crypto.PrivateKey, error) {
-	var (
-		secretName string
-		key        string
-	)
-
-	switch issuerRef.Kind {
-	case cmv1.ClusterIssuerKind:
-		clusterIssuer, err := solver.cm.ClusterIssuers().Get(context.Background(), issuerRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("get ClusterIssuer error: %w", err)
-		}
-
-		secretName = clusterIssuer.Spec.ACME.PrivateKey.Name
-		key = clusterIssuer.Spec.ACME.PrivateKey.Key
-		namespace = CertManagerNamespace
-	case cmv1.IssuerKind:
-		issuer, err := solver.cm.Issuers(namespace).Get(context.Background(), issuerRef.Name, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("get Issuer error: %w", err)
-		}
-
-		secretName = issuer.Spec.ACME.PrivateKey.Name
-		key = issuer.Spec.ACME.PrivateKey.Key
-	}
-
-	if key == "" {
-		key = "tls.key"
-	}
-
-	secret, err := solver.kc.CoreV1().Secrets(namespace).Get(context.Background(), secretName, metav1.GetOptions{})
+func (ls *LegoSolver) getKeyAuthorization(namespace, dnsName, key string) (string, error) {
+	challenge, err := ls.getChallenge(namespace, dnsName, key)
 	if err != nil {
-		return nil, fmt.Errorf("get secret error: %w", err)
+		return "", fmt.Errorf("failed to get challenge: %w", err)
 	}
 
-	block, _ := pem.Decode(secret.Data[key])
-	if block == nil {
-		return nil, errors.New("failed to decode PEM block for issuer secret")
-	}
-
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
-}
-
-func (solver *LegoSolver) getKeyAuthorization(namespace, dnsName, key string) (string, error) {
-	ch := solver.getChallenge(dnsName, key)
-	if ch == nil {
-		return "", errors.New("no challenge match")
-	}
-
-	privKey, err := solver.getIssuerPrivKey(ch.Spec.IssuerRef, namespace)
+	privKey, err := ls.getIssuerPrivKey(challenge.Spec.IssuerRef, namespace)
 	if err != nil {
-		return "", fmt.Errorf("getIssuerPrivKey error: %w", err)
+		return "", fmt.Errorf("failed to get issuer private key: %w", err)
 	}
 
-	keyAuthorization, err := getKeyAuthorization(privKey, ch.Spec.Token)
+	keyAuthorization, err := getKeyAuthorization(privKey, challenge.Spec.Token)
 	if err != nil {
-		return "", fmt.Errorf("getKeyAuthorization error: %w", err)
+		return "", fmt.Errorf("failed to get key authorization: %w", err)
 	}
 
 	keyAuthShaBytes := sha256.Sum256([]byte(keyAuthorization))
 	value := base64.RawURLEncoding.EncodeToString(keyAuthShaBytes[:sha256.Size])
 
 	if value != key {
-		return "", errors.New("inconsistent keyAuthorization")
+		return "", errors.New("key authorization mismatch")
 	}
 
 	return keyAuthorization, nil
+}
+
+func (ls *LegoSolver) getIssuerPrivKey(issuerRef certmanagermetav1.ObjectReference, namespace string) (crypto.PrivateKey, error) {
+	var secretKeySelector certmanagermetav1.SecretKeySelector
+
+	switch issuerRef.Kind {
+	case certmanagerv1.ClusterIssuerKind:
+		clusterIssuer, err := ls.ClusterIssuers().Get(ls.ctx, issuerRef.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get clusterissuer: %w", err)
+		}
+
+		secretKeySelector = clusterIssuer.Spec.ACME.PrivateKey
+		namespace = CertManagerNamespace
+	case certmanagerv1.IssuerKind:
+		issuer, err := ls.Issuers(namespace).Get(ls.ctx, issuerRef.Name, metav1.GetOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get issuer: %w", err)
+		}
+
+		secretKeySelector = issuer.Spec.ACME.PrivateKey
+	default:
+		return nil, errors.New("unknown issuer kind")
+	}
+
+	secret, err := ls.Secrets(namespace).Get(ls.ctx, secretKeySelector.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get secret error: %w", err)
+	}
+
+	var data []byte
+	if secretKeySelector.Key != "" {
+		data = secret.Data[secretKeySelector.Key]
+	} else {
+		data = secret.Data[corev1.TLSPrivateKeyKey]
+	}
+
+	if len(data) == 0 {
+		return nil, fmt.Errorf("key %s not found in secret %s", secretKeySelector.Key, secretKeySelector.Name)
+	}
+
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block containing the private key")
+	}
+
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
+}
+
+func (ls *LegoSolver) getChallenge(namespace, dnsName, key string) (*acmev1.Challenge, error) {
+	list, err := ls.Challenges(namespace).List(ls.ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list challenges: %w", err)
+	}
+
+	for _, challenge := range list.Items {
+		if challenge.Spec.DNSName == dnsName && challenge.Spec.Key == key {
+			return &challenge, nil
+		}
+	}
+
+	return nil, errors.New("no challenge match")
 }
 
 func getKeyAuthorization(privKey crypto.PrivateKey, token string) (string, error) {
