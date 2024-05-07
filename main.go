@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 	"os"
 )
@@ -19,5 +20,7 @@ func main() {
 		panic("CERT_MANAGER_NAMESPACE must be specified")
 	}
 
-	cmd.RunWebhookServer(GroupName, &LegoSolver{})
+	cmd.RunWebhookServer(GroupName, &LegoSolver{
+		ctx: context.Background(),
+	})
 }
