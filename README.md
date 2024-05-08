@@ -9,24 +9,26 @@ helm repo add cert-manager-lego-webhook https://yxwuxuanl.github.io/cert-manager
 
 helm install cert-manager-lego-webhook cert-manager-lego-webhook/cert-manager-lego-webhook \
     --set=groupName=acme.lego.example.com \
-    --set=webhook.image.tag=main
+    --set=certManager.namespace=cert-manager \
+    --set=certManager.serviceAccount.name=cert-manager
 ```
 
 ## Usage
 
 ```yaml
-# DNS Provider Secret
+# step 1: create secret for dns provider
 kind: Secret
 apiVersion: v1
 metadata:
-    name: lego-alidns-secret
+  name: lego-alidns-secret
 stringData:
-    # The key will be passed to Lego DNS Provider as an credentials
-    # for example, https://go-acme.github.io/lego/dns/alidns/#credentials
-    ALICLOUD_ACCESS_KEY: ''
-    ALICLOUD_SECRET_KEY: ''
+  # The key will be passed to Lego DNS Provider as an credentials
+  # for example, https://go-acme.github.io/lego/dns/alidns/#credentials
+  ALICLOUD_ACCESS_KEY: ''
+  ALICLOUD_SECRET_KEY: ''
 
 ---
+# step 2: create ClusterIssuer
 kind: ClusterIssuer
 apiVersion: cert-manager.io/v1
 metadata:
@@ -35,17 +37,35 @@ spec:
   acme:
     privateKeySecretRef:
       name: lego-alidns-alidns-issuer
-    server: ''
-    email: ''
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: '' # <- your email
     solvers:
       - dns01:
           webhook:
             groupName: acme.lego.example.com
-            solverName: lego-solver
+            solverName: lego-solver # <- solver name
             config:
-              # Available `provider` refer to https://go-acme.github.io/lego/dns/#dns-providers
+              # Available provider refer to https://go-acme.github.io/lego/dns/#dns-providers
               provider: alidns
-              envFrom:
+              envFrom: # <- use secret
                 secret:
                   name: lego-alidns-secret
+                  namespace: '' # <- if not set, use cert-manager namespace
+              envs: { } # <- or use env
+
+---
+# step 3: create Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lego.example.com
+spec:
+  issuerRef:
+    name: lego-alidns
+    kind: ClusterIssuer
+  secretName: lego.example.com-tls
+  commonName: lego.example.com
+  dnsNames:
+    - lego.example.com
+    - '*.lego.example.com'
 ```

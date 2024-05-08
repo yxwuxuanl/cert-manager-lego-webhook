@@ -10,7 +10,8 @@ webhook:
   replicas: 1
   affinity: [ ]
   resources: { }
-  envs: { }
+  envs:
+    LEGO_DISABLE_CNAME_SUPPORT: 'true'
   nodeSelector: { }
   extraArgs: [ ]
 
