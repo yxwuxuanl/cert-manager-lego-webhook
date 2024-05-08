@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "appname" . }}
+spec:
+  selector:
+    app: {{ include "appname" . }}
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: https
+      name: https
+  type: ClusterIP

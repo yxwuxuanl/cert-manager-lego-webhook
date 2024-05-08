@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "appname" . }}
+  labels:
+    app: {{ include "appname" . }}
+spec:
+  replicas: {{ .Values.webhook.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "appname" . }}
+  template:
+    metadata:
+      name: {{ include "appname" . }}
+      labels:
+        app: {{ include "appname" . }}
+    spec:
+      volumes:
+        - name: tls
+          secret:
+            secretName: {{ include "appname" . }}
+      serviceAccountName: {{ include "appname" . }}
+      {{- with .Values.webhook.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webhook.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ include "appname" . }}
+          image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
+          imagePullPolicy: {{ .Values.webhook.imagePullPolicy }}
+          volumeMounts:
+            - mountPath: /tls
+              name: tls
+          env:
+            - name: GROUP_NAME
+              value: {{ .Values.groupName }}
+            {{- range $name, $value := .Values.webhook.envs }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          args:
+            - --tls-cert-file=/tls/tls.crt
+            - --tls-private-key-file=/tls/tls.key
+            - --secure-port=8443
+            {{- range .Values.webhook.extraArgs }}
+            - {{ . }}
+            {{- end }}
+          {{- with .Values.webhook.resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: 8443
+              name: https
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+          readinessProbe:
+            httpGet:
+              port: https
+              path: /healthz
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            successThreshold: 1
+            failureThreshold: 5
+            timeoutSeconds: 5
+            periodSeconds: 4
+      restartPolicy: Always

@@ -1,0 +1,44 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "appname" . }}-selfsign
+spec:
+  selfSigned: { }
+
+---
+kind: Certificate
+apiVersion: cert-manager.io/v1
+metadata:
+  name: {{ include "appname" . }}-ca
+spec:
+  issuerRef:
+    name: {{ include "appname" . }}-selfsign
+  secretName: {{ include "appname" . }}-ca
+  duration: '{{ mul 10 365 24 }}h'
+  commonName: 'ca.{{ include "appname" . }}.{{ .Release.Namespace }}'
+  isCA: true
+
+---
+kind: Issuer
+apiVersion: cert-manager.io/v1
+metadata:
+  name: {{ include "appname" . }}-ca
+spec:
+  ca:
+    secretName: {{ include "appname" . }}-ca
+
+---
+kind: Certificate
+apiVersion: cert-manager.io/v1
+metadata:
+  name: {{ include "appname" . }}
+spec:
+  issuerRef:
+    name: {{ include "appname" . }}-ca
+  secretName: {{ include "appname" . }}
+  duration: '{{ mul 365 24 }}h'
+  dnsNames:
+    - {{ include "appname" . }}
+    - {{ include "appname" . }}.{{ .Release.Namespace }}
+    - {{ include "appname" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "appname" . }}.{{ .Release.Namespace }}.svc.cluster.local

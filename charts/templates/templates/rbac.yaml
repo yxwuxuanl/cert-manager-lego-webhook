@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "appname" . }}
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "appname" . }}
+rules:
+  - verbs:
+      - get
+      - list
+      - watch
+    resources:
+      - secrets
+      - configmaps
+    apiGroups:
+      - ''
+  - verbs:
+      - create
+    resources:
+      - subjectaccessreviews
+    apiGroups:
+      - authorization.k8s.io
+  - verbs:
+      - watch
+      - list
+    resources:
+      - challenges
+    apiGroups:
+      - acme.cert-manager.io
+  - verbs:
+      - get
+      - list
+    resources:
+      - issuers
+      - clusterissuers
+    apiGroups:
+      - cert-manager.io
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "appname" . }}-cert-manager
+rules:
+  - apiGroups:
+      - {{ .Values.groupName }}
+    resources:
+      - '*'
+    verbs:
+      - create
+
+---
+{{- if .Values.certManager.serviceAccountName }}
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "appname" . }}-cert-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.certManager.serviceAccountName }}
+    namespace: {{ default .Release.Namespace .Values.certManager.namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "appname" . }}-cert-manager
+---
+{{- end }}
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "appname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "appname" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "appname" . }}
