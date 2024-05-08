@@ -5,7 +5,7 @@ metadata:
   labels:
     app: {{ include "appname" . }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.webhook.replicas }}
   selector:
     matchLabels:
       app: {{ include "appname" . }}
@@ -20,20 +20,22 @@ spec:
           secret:
             secretName: {{ include "appname" . }}
       serviceAccountName: {{ include "appname" . }}
-      nodeSelector:
-        {{- toYaml .Values.webhook.nodeSelector | nindent 8 }}
+      {{- with .Values.webhook.nodeSelector }}
+      nodeSelector: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.webhook.affinity }}
+      affinity: {{ toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ include "appname" . }}
           image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
-          imagePullPolicy: {{ ternary "IfNotPresent" "Always" (ne .Values.webhook.image.tag "main") }}
+          imagePullPolicy: {{ .Values.webhook.imagePullPolicy }}
           volumeMounts:
             - mountPath: /tls
               name: tls
           env:
             - name: GROUP_NAME
               value: {{ .Values.groupName }}
-            - name: CERT_MANAGER_NAMESPACE
-              value: {{ default .Release.Namespace .Values.certManager.namespace }}
             {{- range $name, $value := .Values.webhook.envs }}
             - name: {{ $name }}
               value: {{ $value | quote }}
@@ -45,8 +47,9 @@ spec:
             {{- range .Values.webhook.extraArgs }}
             - {{ . }}
             {{- end }}
-          resources:
-            {{- toYaml .Values.webhook.resources | nindent 12 }}
+          {{- with .Values.webhook.resources }}
+          resources: {{ toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - containerPort: 8443
               name: https
@@ -54,6 +57,10 @@ spec:
             capabilities:
               drop:
                 - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
           readinessProbe:
             httpGet:
               port: https

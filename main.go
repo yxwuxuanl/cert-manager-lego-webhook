@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 	"os"
 )
 
 var (
-	GroupName            = os.Getenv("GROUP_NAME")
-	CertManagerNamespace = os.Getenv("CERT_MANAGER_NAMESPACE")
+	GroupName = os.Getenv("GROUP_NAME")
 )
 
 func main() {
@@ -16,11 +14,5 @@ func main() {
 		panic("GROUP_NAME must be specified")
 	}
 
-	if CertManagerNamespace == "" {
-		panic("CERT_MANAGER_NAMESPACE must be specified")
-	}
-
-	cmd.RunWebhookServer(GroupName, &LegoSolver{
-		ctx: context.Background(),
-	})
+	cmd.RunWebhookServer(GroupName, &LegoSolver{})
 }

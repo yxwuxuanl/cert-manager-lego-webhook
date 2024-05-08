@@ -18,30 +18,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (ls *LegoSolver) getKeyAuthorization(namespace, dnsName, key string) (string, error) {
-	challenge, err := ls.getChallenge(namespace, dnsName, key)
+func (ls *LegoSolver) getKeyAuthorization(namespace, dnsName, key string) (keyAuth, token string, err error) {
+	challenge, err := ls.getChallenge(dnsName, key)
 	if err != nil {
-		return "", fmt.Errorf("failed to get challenge: %w", err)
+		return "", "", fmt.Errorf("failed to get challenge: %w", err)
 	}
 
 	privKey, err := ls.getIssuerPrivKey(challenge.Spec.IssuerRef, namespace)
 	if err != nil {
-		return "", fmt.Errorf("failed to get issuer private key: %w", err)
+		return "", "", fmt.Errorf("failed to get issuer private key: %w", err)
 	}
 
 	keyAuthorization, err := getKeyAuthorization(privKey, challenge.Spec.Token)
 	if err != nil {
-		return "", fmt.Errorf("failed to get key authorization: %w", err)
+		return "", "", fmt.Errorf("failed to get key authorization: %w", err)
 	}
 
 	keyAuthShaBytes := sha256.Sum256([]byte(keyAuthorization))
 	value := base64.RawURLEncoding.EncodeToString(keyAuthShaBytes[:sha256.Size])
 
 	if value != key {
-		return "", errors.New("key authorization mismatch")
+		return "", "", errors.New("key authorization mismatch")
 	}
 
-	return keyAuthorization, nil
+	return keyAuthorization, challenge.Spec.Token, nil
 }
 
 func (ls *LegoSolver) getIssuerPrivKey(issuerRef certmanagermetav1.ObjectReference, namespace string) (crypto.PrivateKey, error) {
@@ -55,7 +55,6 @@ func (ls *LegoSolver) getIssuerPrivKey(issuerRef certmanagermetav1.ObjectReferen
 		}
 
 		secretKeySelector = clusterIssuer.Spec.ACME.PrivateKey
-		namespace = CertManagerNamespace
 	case certmanagerv1.IssuerKind:
 		issuer, err := ls.Issuers(namespace).Get(ls.ctx, issuerRef.Name, metav1.GetOptions{})
 		if err != nil {
@@ -91,15 +90,11 @@ func (ls *LegoSolver) getIssuerPrivKey(issuerRef certmanagermetav1.ObjectReferen
 	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
-func (ls *LegoSolver) getChallenge(namespace, dnsName, key string) (*acmev1.Challenge, error) {
-	list, err := ls.Challenges(namespace).List(ls.ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list challenges: %w", err)
-	}
-
-	for _, challenge := range list.Items {
+func (ls *LegoSolver) getChallenge(dnsName, key string) (*acmev1.Challenge, error) {
+	for _, v := range ls.challengeIndexer.List() {
+		challenge := v.(*acmev1.Challenge)
 		if challenge.Spec.DNSName == dnsName && challenge.Spec.Key == key {
-			return &challenge, nil
+			return challenge, nil
 		}
 	}
 

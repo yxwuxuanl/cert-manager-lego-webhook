@@ -8,7 +8,7 @@ import (
 
 type SecretEnv struct {
 	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 type EnvFrom struct {
@@ -17,8 +17,8 @@ type EnvFrom struct {
 
 type WebhookConfig struct {
 	Provider string             `json:"provider"`
-	Envs     *map[string]string `json:"envs"`
-	EnvFrom  *EnvFrom           `json:"envFrom"`
+	Envs     *map[string]string `json:"envs,omitempty"`
+	EnvFrom  *EnvFrom           `json:"envFrom,omitempty"`
 }
 
 func loadConfig(cfgJSON *extapi.JSON) (*WebhookConfig, error) {
@@ -39,8 +39,6 @@ func loadConfig(cfgJSON *extapi.JSON) (*WebhookConfig, error) {
 		if v.Secret.Name == "" {
 			return nil, fmt.Errorf("secret name is required")
 		}
-	} else if cfg.Envs == nil {
-		return nil, fmt.Errorf("envs or envFrom is required")
 	}
 
 	return cfg, nil
