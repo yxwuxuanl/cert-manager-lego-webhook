@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
@@ -8,7 +9,6 @@ import (
 	acmev1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/acme/v1"
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1"
 	"github.com/go-acme/lego/v4/challenge"
-	"github.com/go-acme/lego/v4/challenge/dns01"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -19,13 +19,22 @@ import (
 	"sync"
 )
 
+type providerKey struct {
+	dnsName, key string
+}
+
 type LegoSolver struct {
-	corev1.CoreV1Interface
-	certmanagerv1.CertmanagerV1Interface
 	ctx context.Context
 
-	challengeIndexer cache.Indexer
-	providers        sync.Map
+	corev1.SecretsGetter
+
+	certmanagerv1.IssuersGetter
+	certmanagerv1.ClusterIssuersGetter
+
+	challengeStore cache.Store
+
+	providers map[providerKey]challenge.Provider
+	mux       sync.RWMutex
 }
 
 func (ls *LegoSolver) Name() string {
@@ -34,65 +43,42 @@ func (ls *LegoSolver) Name() string {
 
 func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
-		"Present txt record",
+		"Present",
 		"ResolvedFQDN", ch.ResolvedFQDN,
 		"Record", ch.Key,
-		"ResolvedZone", ch.ResolvedZone,
-		"DNSName", ch.DNSName,
 	)
 
-	keyAuthorization, token, err := ls.getKeyAuthorization(ch.ResourceNamespace, ch.DNSName, ch.Key)
+	keyAuthorization, token, err := ls.getKeyAuthorization(ch)
 	if err != nil {
 		return err
 	}
 
-	provider, err := ls.buildProvider(ch)
+	provider, err := ls.getProvider(ch)
 	if err != nil {
 		return err
 	}
 
-	err = provider.Present(ch.DNSName, token, keyAuthorization)
-	if err != nil {
-		dns01.ClearFqdnCache()
-		return err
-	}
-
-	ls.providers.Store(getChallengeKey(ch), provider)
-
-	return nil
+	return provider.Present(ch.DNSName, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
-		"Cleanup txt record",
+		"Cleanup",
 		"ResolvedFQDN", ch.ResolvedFQDN,
 		"Record", ch.Key,
-		"ResolvedZone", ch.ResolvedZone,
-		"DNSName", ch.DNSName,
 	)
 
-	keyAuthorization, token, err := ls.getKeyAuthorization(ch.ResourceNamespace, ch.DNSName, ch.Key)
+	keyAuthorization, token, err := ls.getKeyAuthorization(ch)
 	if err != nil {
 		return err
 	}
 
-	var provider challenge.Provider
-	if v, ok := ls.providers.Load(getChallengeKey(ch)); ok {
-		provider = v.(challenge.Provider)
-	} else {
-		provider, err = ls.buildProvider(ch)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = provider.CleanUp(ch.DNSName, token, keyAuthorization)
+	provider, err := ls.getProvider(ch)
 	if err != nil {
-		dns01.ClearFqdnCache()
 		return err
 	}
 
-	return nil
+	return provider.CleanUp(ch.DNSName, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
@@ -101,71 +87,105 @@ func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan st
 		return fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
-	ls.CoreV1Interface = kc.CoreV1()
+	ls.SecretsGetter = kc.CoreV1()
 
-	ls.CertmanagerV1Interface, err = certmanagerv1.NewForConfig(kubeClientConfig)
+	certmanagerV1Client, err := certmanagerv1.NewForConfig(kubeClientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create cert-manager client: %w", err)
 	}
+
+	ls.IssuersGetter = certmanagerV1Client
+	ls.ClusterIssuersGetter = certmanagerV1Client
 
 	acmeV1Interface, err := acmev1.NewForConfig(kubeClientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create acme client: %w", err)
 	}
 
-	challengeWatcher := cache.NewListWatchFromClient(
+	challengelw := cache.NewListWatchFromClient(
 		acmeV1Interface.RESTClient(),
 		"challenges",
 		metav1.NamespaceAll,
 		fields.Everything(),
 	)
 
-	indexer, controller := cache.NewIndexerInformer(challengeWatcher, &acmeapisv1.Challenge{}, 0, cache.ResourceEventHandlerFuncs{
-		DeleteFunc: func(obj interface{}) {
-			ls.providers.Delete(getChallengeKey(obj))
-		},
-	}, cache.Indexers{})
+	var ctrl cache.Controller
 
-	ls.challengeIndexer = indexer
-	ls.ctx = context.Background()
+	ls.challengeStore, ctrl = cache.NewInformerWithOptions(cache.InformerOptions{
+		ListerWatcher: challengelw,
+		ObjectType:    &acmeapisv1.Challenge{},
+		Handler: cache.ResourceEventHandlerFuncs{
+			DeleteFunc: func(obj any) {
+				ls.mux.Lock()
+				defer ls.mux.Unlock()
+
+				ch := obj.(*acmeapisv1.Challenge)
+				delete(ls.providers, providerKey{dnsName: ch.Spec.DNSName, key: ch.Spec.Key})
+			},
+		},
+		ResyncPeriod: 0,
+		Indexers:     cache.Indexers{},
+	})
+
+	var cancel context.CancelFunc
+	ls.ctx, cancel = context.WithCancel(context.Background())
 
 	go func() {
 		<-stopCh
-		ls.ctx.Done()
+		cancel()
 	}()
 
-	go controller.Run(ls.ctx.Done())
+	go ctrl.Run(ls.ctx.Done())
+
+	ls.providers = make(map[providerKey]challenge.Provider)
 
 	return nil
 }
 
-func (ls *LegoSolver) buildProvider(ch *v1alpha1.ChallengeRequest) (provider challenge.Provider, err error) {
+func (ls *LegoSolver) getProvider(ch *v1alpha1.ChallengeRequest) (provider challenge.Provider, err error) {
+	pk := providerKey{dnsName: ch.DNSName, key: ch.Key}
+
+	ls.mux.RLock()
+	provider, ok := ls.providers[pk]
+
+	if ok {
+		ls.mux.RUnlock()
+		return provider, nil
+	}
+
+	ls.mux.RUnlock()
+
 	cfg, err := loadConfig(ch.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	providerEnvs, err := ls.getProviderEnvs(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get provider envs: %w", err)
+	var envs map[string]string
+	if cfg.Envs != nil {
+		envs = *cfg.Envs
+	} else if cfg.EnvFrom != nil {
+		ns := cmp.Or(cfg.EnvFrom.Secret.Namespace, ch.ResourceNamespace)
+
+		envs, err = ls.getEnvsFromSecret(ns, cfg.EnvFrom.Secret.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get provider envs: %w", err)
+		}
 	}
 
-	return &LegoProvider{
-		envs:     providerEnvs,
-		provider: cfg.Provider,
-	}, nil
+	provider, err = newProvider(cfg.Provider, envs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider: %w", err)
+	}
+
+	ls.mux.Lock()
+	defer ls.mux.Unlock()
+
+	ls.providers[pk] = provider
+	return provider, nil
 }
 
-func (ls *LegoSolver) getProviderEnvs(cfg *WebhookConfig) (map[string]string, error) {
-	if cfg.Envs != nil {
-		return *cfg.Envs, nil
-	}
-
-	if cfg.EnvFrom == nil {
-		return nil, nil
-	}
-
-	secret, err := ls.Secrets(cfg.EnvFrom.Secret.Namespace).Get(ls.ctx, cfg.EnvFrom.Secret.Name, metav1.GetOptions{})
+func (ls *LegoSolver) getEnvsFromSecret(namespace, name string) (map[string]string, error) {
+	secret, err := ls.Secrets(namespace).Get(ls.ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %w", err)
 	}
@@ -176,17 +196,4 @@ func (ls *LegoSolver) getProviderEnvs(cfg *WebhookConfig) (map[string]string, er
 	}
 
 	return data, nil
-}
-
-func getChallengeKey(v any) string {
-	switch v.(type) {
-	case *acmeapisv1.Challenge:
-		ch := v.(*acmeapisv1.Challenge)
-		return ch.Spec.DNSName + "." + ch.Spec.Key
-	case *v1alpha1.ChallengeRequest:
-		cr := v.(*v1alpha1.ChallengeRequest)
-		return cr.DNSName + "." + cr.Key
-	default:
-		panic("getChallengeKey: unknown type")
-	}
 }

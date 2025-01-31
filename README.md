@@ -8,9 +8,8 @@
 helm repo add cert-manager-lego-webhook https://yxwuxuanl.github.io/cert-manager-lego-webhook/
 
 helm install cert-manager-lego-webhook cert-manager-lego-webhook/cert-manager-lego-webhook \
-    --set=groupName=acme.lego.example.com \
-    --set=certManager.namespace=cert-manager \
-    --set=certManager.serviceAccount.name=cert-manager
+    --set=certManager.namespace=cert-manager \ # replace with your cert-manager namespace
+    --set=certManager.serviceAccount.name=cert-manager # replace with your cert-manager service account
 ```
 
 ## Usage
@@ -20,38 +19,38 @@ helm install cert-manager-lego-webhook cert-manager-lego-webhook/cert-manager-le
 kind: Secret
 apiVersion: v1
 metadata:
-  name: lego-alidns-secret
+  name: alidns-secret
 stringData:
   # The key will be passed to Lego DNS Provider as an credentials
-  # for example, https://go-acme.github.io/lego/dns/alidns/#credentials
+  # for example: https://go-acme.github.io/lego/dns/alidns/#credentials
   ALICLOUD_ACCESS_KEY: ''
   ALICLOUD_SECRET_KEY: ''
 
 ---
-# step 2: create ClusterIssuer
+# step 2: create ClusterIssuer or Issuer
 kind: ClusterIssuer
 apiVersion: cert-manager.io/v1
 metadata:
-  name: lego-alidns
+  name: alidns
 spec:
   acme:
     privateKeySecretRef:
-      name: lego-alidns-alidns-issuer
+      name: alidns-alidns-issuer
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: '' # <- your email
+    email: '' # your email
     solvers:
       - dns01:
           webhook:
-            groupName: acme.lego.example.com
-            solverName: lego-solver # <- solver name
+            groupName: lego.dns-solver
+            solverName: lego-solver
             config:
-              # Available provider refer to https://go-acme.github.io/lego/dns/#dns-providers
+              # available provider refer to https://go-acme.github.io/lego/dns/#dns-providers
               provider: alidns
-              envFrom: # <- use secret
+              envFrom: # use env from secret
                 secret:
-                  name: lego-alidns-secret
-                  namespace: '' # <- if not set, use cert-manager namespace
-              envs: { } # <- or use env
+                  name: alidns-secret
+                  namespace: '' # if not set, use cert-manager namespace
+              envs: { } # or use envs
 
 ---
 # step 3: create Certificate
@@ -61,7 +60,7 @@ metadata:
   name: lego.example.com
 spec:
   issuerRef:
-    name: lego-alidns
+    name: alidns
     kind: ClusterIssuer
   secretName: lego.example.com-tls
   commonName: lego.example.com

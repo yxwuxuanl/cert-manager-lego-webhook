@@ -6,13 +6,13 @@ import (
 	extapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-type SecretEnv struct {
+type SecretRef struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace,omitempty"`
 }
 
 type EnvFrom struct {
-	Secret SecretEnv `json:"secret"`
+	Secret SecretRef `json:"secret"`
 }
 
 type WebhookConfig struct {

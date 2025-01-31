@@ -1,0 +1,13 @@
+defaultPlatforms:
+  - linux/arm64
+  - linux/amd64
+
+env:
+  - CGO_ENABLED=0
+
+flags:
+  - -v
+
+ldflags:
+  - -s
+  - -w

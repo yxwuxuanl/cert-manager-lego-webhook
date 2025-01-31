@@ -2,65 +2,76 @@ package main
 
 import (
 	"github.com/go-acme/lego/v4/challenge"
+	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/providers/dns"
 	"os"
 	"sync"
 )
 
-var legoMux sync.Mutex
+var setenvMux sync.Mutex
 
-type LegoProvider struct {
-	challenge.Provider
-
-	provider string
+type providerWrapper struct {
+	provider challenge.Provider
 	envs     map[string]string
 }
 
-func (lp *LegoProvider) Present(domain, token, keyAuth string) error {
-	return lp.Do(func(provider challenge.Provider) error {
-		return provider.Present(domain, token, keyAuth)
-	})
-}
+func (lp *providerWrapper) Present(domain, token, keyAuth string) error {
+	reset := setenvs(lp.envs)
+	defer reset()
 
-func (lp *LegoProvider) CleanUp(domain, token, keyAuth string) error {
-	return lp.Do(func(provider challenge.Provider) error {
-		return provider.CleanUp(domain, token, keyAuth)
-	})
-}
-
-func (lp *LegoProvider) Do(fn func(challenge.Provider) error) error {
-	legoMux.Lock()
-
-	existsEnvs := make(map[string]string)
-
-	for name, value := range lp.envs {
-		if exists := os.Getenv(name); exists != "" {
-			existsEnvs[name] = exists
-		}
-		os.Setenv(name, value)
-	}
-
-	defer func() {
-		for name := range lp.envs {
-			if exists, ok := existsEnvs[name]; ok {
-				os.Setenv(name, exists)
-			} else {
-				os.Unsetenv(name)
-			}
-		}
-		legoMux.Unlock()
-	}()
-
-	if lp.Provider != nil {
-		return fn(lp.Provider)
-	}
-
-	provider, err := dns.NewDNSChallengeProviderByName(lp.provider)
-	if err != nil {
+	if err := lp.provider.Present(domain, token, keyAuth); err != nil {
+		dns01.ClearFqdnCache()
 		return err
 	}
 
-	lp.Provider = provider
+	return nil
+}
 
-	return fn(provider)
+func (lp *providerWrapper) CleanUp(domain, token, keyAuth string) error {
+	reset := setenvs(lp.envs)
+	defer reset()
+
+	if err := lp.provider.CleanUp(domain, token, keyAuth); err != nil {
+		dns01.ClearFqdnCache()
+		return err
+	}
+
+	return nil
+}
+
+func newProvider(provider string, envs map[string]string) (*providerWrapper, error) {
+	reset := setenvs(envs)
+	defer reset()
+
+	p, err := dns.NewDNSChallengeProviderByName(provider)
+	if err != nil {
+		return nil, err
+	}
+
+	return &providerWrapper{p, envs}, nil
+}
+
+func setenvs(envs map[string]string) func() {
+	if envs == nil {
+		return func() {}
+	}
+
+	setenvMux.Lock()
+
+	origEnvs := make(map[string]string, len(envs))
+	for name, value := range envs {
+		origEnvs[name] = os.Getenv(name)
+		os.Setenv(name, value)
+	}
+
+	return func() {
+		defer setenvMux.Unlock()
+		for name, value := range origEnvs {
+			if value == "" {
+				os.Unsetenv(name)
+			} else {
+				os.Setenv(name, value)
+			}
+		}
+	}
 }
