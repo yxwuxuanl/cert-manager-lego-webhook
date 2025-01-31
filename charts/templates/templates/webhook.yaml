@@ -28,7 +28,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ include "appname" . }}
-          image: '{{ .Values.webhook.image.repository }}:{{ default .Chart.Version .Values.webhook.image.tag }}'
+          image: '{{ .Values.webhook.image.repository }}:{{ default (printf "v%s" .Chart.Version) .Values.webhook.image.tag }}'
           imagePullPolicy: {{ .Values.webhook.imagePullPolicy }}
           volumeMounts:
             - mountPath: /tls
