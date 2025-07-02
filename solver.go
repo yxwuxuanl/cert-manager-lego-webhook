@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"sync"
+
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
 	acmeapisv1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
 	acmev1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/acme/v1"
@@ -16,7 +18,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"sync"
 )
 
 type providerKey struct {
@@ -44,7 +45,9 @@ func (ls *LegoSolver) Name() string {
 func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
 		"Present",
+		"DNSName", ch.DNSName,
 		"ResolvedFQDN", ch.ResolvedFQDN,
+		"ResolvedZone", ch.ResolvedZone,
 		"Record", ch.Key,
 	)
 
@@ -58,13 +61,15 @@ func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.Present(ch.ResolvedFQDN, token, keyAuthorization)
+	return provider.Present(ch.ResolvedZone, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
 		"Cleanup",
+		"DNSName", ch.DNSName,
 		"ResolvedFQDN", ch.ResolvedFQDN,
+		"ResolvedZone", ch.ResolvedZone,
 		"Record", ch.Key,
 	)
 
@@ -78,7 +83,7 @@ func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.CleanUp(ch.ResolvedFQDN, token, keyAuthorization)
+	return provider.CleanUp(ch.ResolvedZone, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
