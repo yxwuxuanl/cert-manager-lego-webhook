@@ -58,7 +58,7 @@ func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.Present(ch.DNSName, token, keyAuthorization)
+	return provider.Present(ch.ResolvedFQDN, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
@@ -78,7 +78,7 @@ func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.CleanUp(ch.DNSName, token, keyAuthorization)
+	return provider.CleanUp(ch.ResolvedFQDN, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
