@@ -1,11 +1,12 @@
 package main
 
 import (
+	"os"
+	"sync"
+
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/providers/dns"
-	"os"
-	"sync"
 )
 
 var setenvMux sync.Mutex
@@ -19,7 +20,8 @@ func (lp *providerWrapper) Present(domain, token, keyAuth string) error {
 	reset := setenvs(lp.envs)
 	defer reset()
 
-	if err := lp.provider.Present(domain, token, keyAuth); err != nil {
+	unfqdn := dns01.UnFqdn(domain)
+	if err := lp.provider.Present(unfqdn, token, keyAuth); err != nil {
 		dns01.ClearFqdnCache()
 		return err
 	}
@@ -31,7 +33,8 @@ func (lp *providerWrapper) CleanUp(domain, token, keyAuth string) error {
 	reset := setenvs(lp.envs)
 	defer reset()
 
-	if err := lp.provider.CleanUp(domain, token, keyAuth); err != nil {
+	unfqdn := dns01.UnFqdn(domain)
+	if err := lp.provider.CleanUp(unfqdn, token, keyAuth); err != nil {
 		dns01.ClearFqdnCache()
 		return err
 	}
