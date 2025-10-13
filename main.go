@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 	"os"
+
+	"github.com/cert-manager/cert-manager/pkg/acme/webhook/cmd"
 )
 
 var (

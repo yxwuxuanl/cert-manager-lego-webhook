@@ -1,11 +1,12 @@
 package main
 
 import (
+	"os"
+	"sync"
+
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/providers/dns"
-	"os"
-	"sync"
 )
 
 var setenvMux sync.Mutex
