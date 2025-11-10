@@ -14,6 +14,8 @@ webhook:
     LEGO_DISABLE_CNAME_SUPPORT: 'true'
   nodeSelector: { }
   extraArgs: [ ]
+  dnsConfig: { }
+  
 
 certManager:
   namespace: ''

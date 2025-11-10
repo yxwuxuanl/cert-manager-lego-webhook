@@ -26,6 +26,10 @@ spec:
       {{- with .Values.webhook.affinity }}
       affinity: {{ toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.webhook.dnsConfig }}
+      dnsPolicy: None
+      dnsConfig: {{ toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ include "appname" . }}
           image: '{{ .Values.webhook.image.repository }}:{{ default (printf "v%s" .Chart.Version) .Values.webhook.image.tag }}'
