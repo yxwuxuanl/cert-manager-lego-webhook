@@ -13,6 +13,7 @@ webhook:
   envs:
     LEGO_DISABLE_CNAME_SUPPORT: 'true'
   nodeSelector: { }
+  tolerations: [ ]
   extraArgs: [ ]
   dnsConfig: { }
   
