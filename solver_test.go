@@ -1,17 +1,18 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	acmeapisv1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
-	"github.com/go-acme/lego/v4/challenge"
+	"github.com/go-acme/lego/v5/challenge"
 	"k8s.io/client-go/tools/cache"
 )
 
 type fakeProvider struct{}
 
-func (fakeProvider) Present(string, string, string) error { return nil }
-func (fakeProvider) CleanUp(string, string, string) error { return nil }
+func (fakeProvider) Present(context.Context, string, string, string) error { return nil }
+func (fakeProvider) CleanUp(context.Context, string, string, string) error { return nil }
 
 var _ challenge.Provider = fakeProvider{}
 

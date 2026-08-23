@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"os"
 	"sync"
 
-	"github.com/go-acme/lego/v4/challenge"
-	"github.com/go-acme/lego/v4/challenge/dns01"
-	"github.com/go-acme/lego/v4/providers/dns"
+	"github.com/go-acme/lego/v5/challenge"
+	"github.com/go-acme/lego/v5/challenge/dns01"
+	"github.com/go-acme/lego/v5/providers/dns"
 )
 
 var setenvMux sync.Mutex
@@ -16,24 +17,24 @@ type providerWrapper struct {
 	envs     map[string]string
 }
 
-func (lp *providerWrapper) Present(domain, token, keyAuth string) error {
+func (lp *providerWrapper) Present(ctx context.Context, domain, token, keyAuth string) error {
 	reset := setenvs(lp.envs)
 	defer reset()
 
-	if err := lp.provider.Present(domain, token, keyAuth); err != nil {
-		dns01.ClearFqdnCache()
+	if err := lp.provider.Present(ctx, domain, token, keyAuth); err != nil {
+		dns01.DefaultClient().ClearFqdnCache()
 		return err
 	}
 
 	return nil
 }
 
-func (lp *providerWrapper) CleanUp(domain, token, keyAuth string) error {
+func (lp *providerWrapper) CleanUp(ctx context.Context, domain, token, keyAuth string) error {
 	reset := setenvs(lp.envs)
 	defer reset()
 
-	if err := lp.provider.CleanUp(domain, token, keyAuth); err != nil {
-		dns01.ClearFqdnCache()
+	if err := lp.provider.CleanUp(ctx, domain, token, keyAuth); err != nil {
+		dns01.DefaultClient().ClearFqdnCache()
 		return err
 	}
 

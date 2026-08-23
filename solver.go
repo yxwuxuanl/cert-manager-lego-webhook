@@ -11,7 +11,7 @@ import (
 	acmeapisv1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
 	acmev1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/acme/v1"
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/certmanager/v1"
-	"github.com/go-acme/lego/v4/challenge"
+	"github.com/go-acme/lego/v5/challenge"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
@@ -60,7 +60,7 @@ func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.Present(ch.DNSName, token, keyAuthorization)
+	return provider.Present(ls.ctx, ch.DNSName, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
@@ -80,7 +80,7 @@ func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 		return err
 	}
 
-	return provider.CleanUp(ch.DNSName, token, keyAuthorization)
+	return provider.CleanUp(ls.ctx, ch.DNSName, token, keyAuthorization)
 }
 
 func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
