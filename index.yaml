@@ -3,6 +3,16 @@ entries:
   cert-manager-lego-webhook:
   - apiVersion: v2
     appVersion: 1.16.0
+    created: "2026-08-24T03:14:19.025918475Z"
+    description: A Helm chart for Kubernetes
+    digest: ef06fe129895b6345931a800bcefe129cfda15a71043d51b08c1c6458df54e04
+    name: cert-manager-lego-webhook
+    type: application
+    urls:
+    - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-1.5.0/cert-manager-lego-webhook-1.5.0.tgz
+    version: 1.5.0
+  - apiVersion: v2
+    appVersion: 1.16.0
     created: "2025-12-18T15:03:16.873798508Z"
     description: A Helm chart for Kubernetes
     digest: 2feff54c918a39c52ca3c31dc214791e987cb41ab87c66cfd3068f29b69cfaf3
@@ -91,4 +101,4 @@ entries:
     urls:
     - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-0.1.0/cert-manager-lego-webhook-0.1.0.tgz
     version: 0.1.0
-generated: "2025-12-18T15:03:16.873831881Z"
+generated: "2026-08-24T03:14:19.025958979Z"
