@@ -2,6 +2,26 @@ apiVersion: v1
 entries:
   cert-manager-lego-webhook:
   - apiVersion: v2
+    appVersion: 1.5.0
+    created: "2026-09-08T06:49:21.969828548Z"
+    description: A cert-manager DNS-01 webhook supporting multiple DNS providers through
+      lego.
+    digest: 5bc9f0a1660742adcceeb1dc52afc4506c676d63d30f79292ac66ae9a96c4d32
+    home: https://github.com/yxwuxuanl/cert-manager-lego-webhook
+    keywords:
+    - cert-manager
+    - lego
+    - dns-01
+    - acme
+    - tls
+    name: cert-manager-lego-webhook
+    sources:
+    - https://github.com/yxwuxuanl/cert-manager-lego-webhook
+    type: application
+    urls:
+    - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-1.5.1/cert-manager-lego-webhook-1.5.1.tgz
+    version: 1.5.1
+  - apiVersion: v2
     appVersion: 1.16.0
     created: "2026-08-24T03:14:19.025918475Z"
     description: A Helm chart for Kubernetes
@@ -101,4 +121,4 @@ entries:
     urls:
     - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-0.1.0/cert-manager-lego-webhook-0.1.0.tgz
     version: 0.1.0
-generated: "2026-08-24T03:14:19.025958979Z"
+generated: "2026-09-08T06:49:21.969855608Z"
