@@ -1,0 +1,18 @@
+{{ .Release.Name }} uses webhook image {{ include "cert-manager-lego-webhook.image" . }}.
+
+Check webhook availability:
+  kubectl rollout status deployment/{{ include "appname" . }} --namespace {{ .Release.Namespace }}
+  kubectl get apiservice v1alpha1.{{ .Values.groupName }}
+
+Configure your Issuer or ClusterIssuer with:
+  groupName: {{ .Values.groupName }}
+  solverName: lego-solver
+
+Use config.envFrom.secret for DNS credentials and omit config.envs when doing so.
+{{- if not .Values.certManager.serviceAccountName }}
+
+The cert-manager caller binding is disabled. Provide your own RBAC binding before issuing certificates.
+{{- end }}
+
+Provider setup and examples:
+  https://github.com/yxwuxuanl/cert-manager-lego-webhook#quick-start

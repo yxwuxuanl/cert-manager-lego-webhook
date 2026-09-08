@@ -8,8 +8,19 @@ welcome. For a larger change, open an issue to discuss the proposed behavior.
 ## Local development
 
 Use the Go version specified in [go.mod](go.mod). Helm is needed for chart checks.
-The Go sources and their tests are in the repository root; the Helm chart is in
-`charts/templates/`.
+
+```text
+cmd/cert-manager-lego-webhook/  Executable entry point
+internal/solver/               Webhook, ACME and provider logic with unit tests
+charts/templates/              Helm chart
+tests/chart/                   Helm rendering and schema tests
+scripts/                       Chart installation and upgrade checks
+docs/                          Configuration and troubleshooting guides
+examples/                      Sample Kubernetes manifests
+```
+
+Keep the entry point focused on starting the server. Implementation details belong
+in `internal/solver/`, with unit tests beside the code they exercise.
 
 ```sh
 go build ./...
@@ -18,15 +29,50 @@ go test -race ./...
 go vet ./...
 ```
 
+To build the executable or run it against a configured test cluster:
+
+```sh
+go build -o /tmp/cert-manager-lego-webhook ./cmd/cert-manager-lego-webhook
+GROUP_NAME=lego.dns-solver go run ./cmd/cert-manager-lego-webhook
+```
+
+Both the Dockerfile and the ko image workflow build the command in
+`cmd/cert-manager-lego-webhook/`. For a local Docker build:
+
+```sh
+docker build -t cert-manager-lego-webhook:dev .
+```
+
 For chart changes:
 
 ```sh
 helm lint charts/templates
 helm template dev charts/templates --set certManager.namespace=cert-manager
+go test ./tests/chart -count=1
 ```
 
 Unit tests and chart rendering do not verify live DNS provider access. Validate
 provider behavior with a staging certificate in a test cluster when relevant.
+
+Chart CI runs the rendering and schema tests with Helm 3 and Helm 4, verifies
+the default image exists, and tests fresh installation and an upgrade from chart
+1.5.0 in a disposable kind cluster. The upgrade reuses the old values and enables
+Restricted Pod Security before creating the updated Pods. To run the cluster
+checks locally, create a disposable kind cluster and run:
+
+```sh
+KUBE_CONTEXT=kind-chart-testing bash scripts/test-chart-install.sh
+```
+
+The script installs cert-manager and webhook releases in that cluster; it only
+accepts an explicitly named `kind-*` context. It verifies serving certificates
+and API discovery, without using DNS provider credentials. Delete the disposable
+cluster after testing.
+
+Chart publication on `main` requires all chart checks to pass. For chart-only
+changes, bump `Chart.yaml`'s `version` while keeping `appVersion` at the existing
+webhook version. For a new application release, publish its `v<appVersion>` image
+before publishing a chart that selects it.
 
 ## Pull requests
 

@@ -1,4 +1,4 @@
-module cert-manager-lego-webhook
+module github.com/yxwuxuanl/cert-manager-lego-webhook
 
 go 1.27.0
 

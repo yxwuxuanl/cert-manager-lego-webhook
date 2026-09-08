@@ -4,10 +4,96 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'charts/**'
+      - 'tests/chart/**'
+      - 'scripts/test-chart-install.sh'
+      - '.github/workflows/helm.yml'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    paths:
+      - 'charts/**'
+      - 'tests/chart/**'
+      - 'scripts/test-chart-install.sh'
+      - '.github/workflows/helm.yml'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build-and-push:
+  validate:
+    name: Validate / Helm ${{ matrix.helm }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        helm: ['v3.21.4', 'v4.2.4']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: azure/setup-helm@v5
+        with:
+          version: ${{ matrix.helm }}
+      - name: Lint and test the chart
+        run: |
+          helm lint charts/templates --strict
+          go test ./tests/chart -count=1
+      - name: Verify the default image exists
+        shell: bash
+        run: |
+          image=$(helm template verify charts/templates --show-only templates/webhook.yaml | awk '/^[[:space:]]*image:/ {gsub(/"/, "", $2); print $2}')
+          test -n "$image"
+          docker buildx imagetools inspect "$image"
+
+  install-and-upgrade:
+    name: Install and upgrade / Helm ${{ matrix.helm }}
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        helm: ['v3.21.4', 'v4.2.4']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
+        with:
+          version: ${{ matrix.helm }}
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: chart-testing
+          node_image: kindest/node:v1.35.0@sha256:452d707d4862f52530247495d180205e029056831160e22870e37e3f6c1ac31f
+      - name: Test installation and upgrade
+        run: bash scripts/test-chart-install.sh
+        env:
+          KUBE_CONTEXT: kind-chart-testing
+      - name: Collect failure diagnostics
+        if: failure()
+        run: |
+          kubectl --context kind-chart-testing get pods,certificates -A
+          kubectl --context kind-chart-testing get apiservices
+          kubectl --context kind-chart-testing get events -A --sort-by=.lastTimestamp
+          kubectl --context kind-chart-testing logs deployment/lego-webhook-test -n lego-webhook-test --all-containers --tail=100 || true
+          kubectl --context kind-chart-testing logs deployment/lego-webhook-fresh -n lego-webhook-fresh --all-containers --tail=100 || true
+
+  build-and-push:
+    needs: [validate, install-and-upgrade]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -22,10 +108,12 @@ jobs:
 
       - name: Install Helm
         uses: azure/setup-helm@v5
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          version: v4.2.4
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
+        with:
+          skip_existing: true
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

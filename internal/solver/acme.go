@@ -1,4 +1,4 @@
-package main
+package solver
 
 import (
 	"cmp"
@@ -19,7 +19,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (ls *LegoSolver) getKeyAuthorization(ch *v1alpha1.ChallengeRequest) (keyAuth, token string, err error) {
+func (ls *Solver) getKeyAuthorization(ch *v1alpha1.ChallengeRequest) (keyAuth, token string, err error) {
 	challenge, err := ls.getChallenge(ch)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get challenge: %w", err)
@@ -47,7 +47,7 @@ func (ls *LegoSolver) getKeyAuthorization(ch *v1alpha1.ChallengeRequest) (keyAut
 	return keyAuth, challenge.Spec.Token, nil
 }
 
-func (ls *LegoSolver) getIssuerPrivateKeySigner(issuerRef certmanagermetav1.IssuerReference, resourceNamespace string) (crypto.Signer, error) {
+func (ls *Solver) getIssuerPrivateKeySigner(issuerRef certmanagermetav1.IssuerReference, resourceNamespace string) (crypto.Signer, error) {
 	var secretKeySelector certmanagermetav1.SecretKeySelector
 
 	switch issuerRef.Kind {
@@ -112,7 +112,7 @@ func parsePrivateKey(der []byte) (crypto.Signer, error) {
 	return nil, errors.New("unsupported private key format")
 }
 
-func (ls *LegoSolver) getChallenge(ch *v1alpha1.ChallengeRequest) (*acmev1.Challenge, error) {
+func (ls *Solver) getChallenge(ch *v1alpha1.ChallengeRequest) (*acmev1.Challenge, error) {
 	for _, v := range ls.challengeStore.List() {
 		challenge := v.(*acmev1.Challenge)
 		if challenge.Spec.Type == acmev1.ACMEChallengeTypeDNS01 &&

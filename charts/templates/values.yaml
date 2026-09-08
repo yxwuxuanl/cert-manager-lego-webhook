@@ -5,10 +5,12 @@ nameOverride: ''
 webhook:
   image:
     repository: ghcr.io/yxwuxuanl/cert-manager-lego-webhook
+    # Empty selects v<appVersion>, independently of the chart version.
     tag: ''
   imagePullPolicy: IfNotPresent
   replicas: 1
-  affinity: [ ]
+  # An empty list from older releases is also accepted during upgrades.
+  affinity: {}
   resources: { }
   envs:
     LEGO_DISABLE_CNAME_SUPPORT: 'true'

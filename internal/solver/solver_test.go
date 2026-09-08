@@ -1,4 +1,4 @@
-package main
+package solver
 
 import (
 	"context"
@@ -19,7 +19,7 @@ var _ challenge.Provider = fakeProvider{}
 func TestDeleteProviderForChallenge(t *testing.T) {
 	t.Parallel()
 
-	ls := &LegoSolver{
+	ls := &Solver{
 		providers: map[providerKey]challenge.Provider{
 			{dnsName: "example.com", key: "key"}: fakeProvider{},
 		},
@@ -40,7 +40,7 @@ func TestDeleteProviderForChallenge(t *testing.T) {
 func TestDeleteProviderForChallengeTombstone(t *testing.T) {
 	t.Parallel()
 
-	ls := &LegoSolver{
+	ls := &Solver{
 		providers: map[providerKey]challenge.Provider{
 			{dnsName: "example.com", key: "key"}: fakeProvider{},
 		},
@@ -63,7 +63,7 @@ func TestDeleteProviderForChallengeTombstone(t *testing.T) {
 func TestDeleteProviderForChallengeIgnoresUnknownObject(t *testing.T) {
 	t.Parallel()
 
-	ls := &LegoSolver{
+	ls := &Solver{
 		providers: map[providerKey]challenge.Provider{
 			{dnsName: "example.com", key: "key"}: fakeProvider{},
 		},

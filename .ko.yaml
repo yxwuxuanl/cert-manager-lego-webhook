@@ -2,12 +2,13 @@ defaultPlatforms:
   - linux/arm64
   - linux/amd64
 
-env:
-  - CGO_ENABLED=0
-
-flags:
-  - -v
-
-ldflags:
-  - -s
-  - -w
+builds:
+  - id: cert-manager-lego-webhook
+    main: ./cmd/cert-manager-lego-webhook
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -v
+    ldflags:
+      - -s
+      - -w

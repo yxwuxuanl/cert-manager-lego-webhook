@@ -1,4 +1,5 @@
-package main
+// Package solver implements cert-manager DNS-01 challenges using lego providers.
+package solver
 
 import (
 	"cmp"
@@ -7,6 +8,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/cert-manager/cert-manager/pkg/acme/webhook"
 	"github.com/cert-manager/cert-manager/pkg/acme/webhook/apis/acme/v1alpha1"
 	acmeapisv1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
 	acmev1 "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned/typed/acme/v1"
@@ -25,7 +27,9 @@ type providerKey struct {
 	dnsName, key string
 }
 
-type LegoSolver struct {
+// Solver adapts lego DNS providers to the cert-manager webhook interface.
+// Initialize must be called before handling challenges.
+type Solver struct {
 	ctx context.Context
 
 	corev1.SecretsGetter
@@ -39,11 +43,13 @@ type LegoSolver struct {
 	mux       sync.RWMutex
 }
 
-func (ls *LegoSolver) Name() string {
+var _ webhook.Solver = (*Solver)(nil)
+
+func (ls *Solver) Name() string {
 	return "lego-solver"
 }
 
-func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
+func (ls *Solver) Present(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
 		"Present",
 		"ResolvedFQDN", ch.ResolvedFQDN,
@@ -63,7 +69,7 @@ func (ls *LegoSolver) Present(ch *v1alpha1.ChallengeRequest) error {
 	return provider.Present(ls.ctx, ch.DNSName, token, keyAuthorization)
 }
 
-func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
+func (ls *Solver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	klog.InfoS(
 		"Cleanup",
 		"ResolvedFQDN", ch.ResolvedFQDN,
@@ -83,7 +89,7 @@ func (ls *LegoSolver) CleanUp(ch *v1alpha1.ChallengeRequest) error {
 	return provider.CleanUp(ls.ctx, ch.DNSName, token, keyAuthorization)
 }
 
-func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
+func (ls *Solver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan struct{}) error {
 	kc, err := kubernetes.NewForConfig(kubeClientConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create kubernetes client: %w", err)
@@ -142,7 +148,7 @@ func (ls *LegoSolver) Initialize(kubeClientConfig *rest.Config, stopCh <-chan st
 	return nil
 }
 
-func (ls *LegoSolver) deleteProviderForChallenge(obj any) {
+func (ls *Solver) deleteProviderForChallenge(obj any) {
 	challenge, ok := obj.(*acmeapisv1.Challenge)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -164,7 +170,7 @@ func (ls *LegoSolver) deleteProviderForChallenge(obj any) {
 	delete(ls.providers, providerKey{dnsName: challenge.Spec.DNSName, key: challenge.Spec.Key})
 }
 
-func (ls *LegoSolver) getProvider(ch *v1alpha1.ChallengeRequest) (provider challenge.Provider, err error) {
+func (ls *Solver) getProvider(ch *v1alpha1.ChallengeRequest) (provider challenge.Provider, err error) {
 	pk := providerKey{dnsName: ch.DNSName, key: ch.Key}
 
 	ls.mux.RLock()
@@ -206,7 +212,7 @@ func (ls *LegoSolver) getProvider(ch *v1alpha1.ChallengeRequest) (provider chall
 	return provider, nil
 }
 
-func (ls *LegoSolver) getEnvsFromSecret(namespace, name string) (map[string]string, error) {
+func (ls *Solver) getEnvsFromSecret(namespace, name string) (map[string]string, error) {
 	secret, err := ls.Secrets(namespace).Get(ls.ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret: %w", err)

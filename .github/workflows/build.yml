@@ -18,4 +18,4 @@ jobs:
         with:
           go-version: '1.27.x'
       - uses: ko-build/setup-ko@v0.10
-      - run: ko build --sbom=none --bare -t ${{ github.ref_name }}
+      - run: ko build ./cmd/cert-manager-lego-webhook --sbom=none --bare -t ${{ github.ref_name }}

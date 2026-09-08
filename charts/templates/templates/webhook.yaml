@@ -15,6 +15,9 @@ spec:
       labels:
         app: {{ include "appname" . }}
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       volumes:
         - name: tls
           secret:
@@ -35,7 +38,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ include "appname" . }}
-          image: '{{ .Values.webhook.image.repository }}:{{ default (printf "v%s" .Chart.Version) .Values.webhook.image.tag }}'
+          image: {{ include "cert-manager-lego-webhook.image" . | quote }}
           imagePullPolicy: {{ .Values.webhook.imagePullPolicy }}
           volumeMounts:
             - mountPath: /tls
@@ -61,6 +64,7 @@ spec:
             - containerPort: 8443
               name: https
           securityContext:
+            allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL

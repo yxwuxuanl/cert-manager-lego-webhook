@@ -107,19 +107,25 @@ See [values.yaml](../charts/templates/values.yaml) for the complete set of defau
 | `certManager.namespace` | Release namespace | Namespace of cert-manager's ServiceAccount for the role binding. |
 | `certManager.serviceAccountName` | `cert-manager` | cert-manager ServiceAccount allowed to call the webhook. |
 | `webhook.image.repository` | `ghcr.io/yxwuxuanl/cert-manager-lego-webhook` | Container image repository. |
-| `webhook.image.tag` | `v` + chart version | Image tag; an empty value selects the chart's version prefixed with `v`. |
+| `webhook.image.tag` | `v` + `appVersion` | Image tag; an empty value selects the webhook application version prefixed with `v`. |
 | `webhook.imagePullPolicy` | `IfNotPresent` | Image pull policy. |
 | `webhook.replicas` | `1` | Number of webhook replicas. |
 | `webhook.envs` | `LEGO_DISABLE_CNAME_SUPPORT: 'true'` | Environment variables on the webhook container. |
 | `webhook.resources` | `{}` | CPU and memory requests and limits. |
 | `webhook.nodeSelector` | `{}` | Node selection. |
 | `webhook.tolerations` | `[]` | Pod tolerations. |
-| `webhook.affinity` | `[]` | Omitted by default; supply a Kubernetes affinity object to enable it. |
+| `webhook.affinity` | `{}` | Omitted by default; supply a Kubernetes affinity object to enable it. The legacy empty `[]` is also accepted. |
 | `webhook.extraArgs` | `[]` | Additional webhook server arguments. |
 | `webhook.dnsConfig` | `{}` | Custom pod DNS configuration; setting it switches `dnsPolicy` to `None`. |
 
-The chart's `appVersion` field is not used to select the image tag. The deployment
-template uses `webhook.image.tag`, falling back to `v<chart-version>`.
+Starting with chart 1.5.1, the deployment uses `webhook.image.tag`, falling back
+to `v<appVersion>`. Chart 1.5.1 therefore continues to deploy webhook v1.5.0.
+Chart-only fixes no longer require a new application image.
+
+Value types and unknown chart configuration keys are validated before rendering.
+Environment variable values must be strings, and a nonempty `webhook.dnsConfig`
+must include `nameservers`. See the [chart guide](../charts/templates/README.md)
+for upgrade notes and Pod security defaults.
 
 ### CNAME delegation
 

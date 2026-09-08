@@ -1,4 +1,4 @@
-package main
+package solver
 
 import (
 	"encoding/json"
@@ -7,23 +7,23 @@ import (
 	extapi "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 )
 
-type SecretRef struct {
+type secretRef struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace,omitempty"`
 }
 
-type EnvFrom struct {
-	Secret SecretRef `json:"secret"`
+type envFrom struct {
+	Secret secretRef `json:"secret"`
 }
 
-type WebhookConfig struct {
+type webhookConfig struct {
 	Provider string             `json:"provider"`
 	Envs     *map[string]string `json:"envs,omitempty"`
-	EnvFrom  *EnvFrom           `json:"envFrom,omitempty"`
+	EnvFrom  *envFrom           `json:"envFrom,omitempty"`
 }
 
-func loadConfig(cfgJSON *extapi.JSON) (*WebhookConfig, error) {
-	cfg := &WebhookConfig{}
+func loadConfig(cfgJSON *extapi.JSON) (*webhookConfig, error) {
+	cfg := &webhookConfig{}
 	if cfgJSON == nil {
 		return cfg, nil
 	}
