@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lego-example
+  namespace: default
+spec:
+  secretName: lego-example-tls
+  issuerRef:
+    name: alidns-staging
+    kind: ClusterIssuer
+  # Replace both names with names in your DNS zone.
+  dnsNames:
+    - lego.example.com
+    - '*.lego.example.com'

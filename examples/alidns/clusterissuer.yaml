@@ -1,0 +1,23 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: alidns-staging
+spec:
+  acme:
+    # Replace with your ACME contact email.
+    email: you@example.com
+    # Staging certificates are not trusted by browsers.
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: alidns-staging-account-key
+    solvers:
+      - dns01:
+          webhook:
+            groupName: lego.dns-solver
+            solverName: lego-solver
+            config:
+              provider: alidns
+              envFrom:
+                secret:
+                  name: alidns-secret
+                  namespace: cert-manager
