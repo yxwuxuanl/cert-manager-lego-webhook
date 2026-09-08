@@ -66,8 +66,10 @@ KUBE_CONTEXT=kind-chart-testing bash scripts/test-chart-install.sh
 
 The script installs cert-manager and webhook releases in that cluster; it only
 accepts an explicitly named `kind-*` context. It verifies serving certificates
-and API discovery, without using DNS provider credentials. Delete the disposable
-cluster after testing.
+and API discovery, without using DNS provider credentials. Discovery requests
+retry for up to two minutes after APIService availability to allow routing to
+settle during rollouts; a persistent failure still fails the test. Delete the
+disposable cluster after testing.
 
 Chart publication on `main` requires all chart checks to pass. For chart-only
 changes, bump `Chart.yaml`'s `version` while keeping `appVersion` at the existing
