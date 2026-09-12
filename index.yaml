@@ -2,6 +2,26 @@ apiVersion: v1
 entries:
   cert-manager-lego-webhook:
   - apiVersion: v2
+    appVersion: 1.6.0
+    created: "2026-09-12T07:07:03.463613879Z"
+    description: A cert-manager DNS-01 webhook supporting multiple DNS providers through
+      lego.
+    digest: 5109b6d882db1b5ee7ffde7495b763954b29062e1dfa635307cb5f5fed0d3099
+    home: https://github.com/yxwuxuanl/cert-manager-lego-webhook
+    keywords:
+    - cert-manager
+    - lego
+    - dns-01
+    - acme
+    - tls
+    name: cert-manager-lego-webhook
+    sources:
+    - https://github.com/yxwuxuanl/cert-manager-lego-webhook
+    type: application
+    urls:
+    - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-1.6.0/cert-manager-lego-webhook-1.6.0.tgz
+    version: 1.6.0
+  - apiVersion: v2
     appVersion: 1.5.0
     created: "2026-09-08T06:49:21.969828548Z"
     description: A cert-manager DNS-01 webhook supporting multiple DNS providers through
@@ -121,4 +141,4 @@ entries:
     urls:
     - https://github.com/yxwuxuanl/cert-manager-lego-webhook/releases/download/cert-manager-lego-webhook-0.1.0/cert-manager-lego-webhook-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-08T06:49:21.969855608Z"
+generated: "2026-09-12T07:07:03.463672748Z"
