@@ -15,6 +15,7 @@ helm repo add cert-manager-lego-webhook https://yxwuxuanl.github.io/cert-manager
 helm repo update
 helm upgrade --install cert-manager-lego-webhook \
   cert-manager-lego-webhook/cert-manager-lego-webhook \
+  --version 1.6.0 \
   --namespace cert-manager --create-namespace \
   --set certManager.namespace=cert-manager \
   --set certManager.serviceAccountName=cert-manager \
@@ -49,11 +50,12 @@ The chart validates value types and rejects unknown top-level, `webhook`, image,
 and `certManager` keys. `global` and `tags` are accepted for use in parent charts.
 Kubernetes-specific objects still need to satisfy the Kubernetes API schema.
 
-## Upgrading from 1.5.0
+## Upgrading from 1.5.x
 
-Chart **1.5.1** keeps the webhook image at **v1.5.0**. Starting with this release,
-`appVersion` selects the default image independently of the chart version.
-An explicit `webhook.image.tag` continues to take precedence.
+Chart **1.6.0** uses webhook image **v1.6.0** by default. Both `version` and
+`appVersion` are `1.6.0`. The default image follows `appVersion`, while an explicit
+`webhook.image.tag` takes precedence. If your saved values pin an older image,
+remove that override or pass `--set webhook.image.tag=` to use the chart default.
 
 Resource names and Deployment selectors are preserved. Existing empty
 `webhook.affinity: []` values remain valid, including with `helm upgrade --reuse-values`.

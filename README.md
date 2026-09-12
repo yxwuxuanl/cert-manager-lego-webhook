@@ -51,6 +51,7 @@ helm repo update
 
 helm upgrade --install cert-manager-lego-webhook \
   cert-manager-lego-webhook/cert-manager-lego-webhook \
+  --version 1.6.0 \
   --namespace cert-manager \
   --create-namespace \
   --set certManager.namespace=cert-manager \
@@ -58,7 +59,8 @@ helm upgrade --install cert-manager-lego-webhook \
   --wait --timeout 5m
 ```
 
-To pin a release, add `--version <chart-version>`. See the
+These commands install chart **1.6.0** with webhook image **v1.6.0**. To select
+another release, change `--version`. See the
 [Helm options](docs/configuration.md#helm-values) for image, scheduling, and DNS settings.
 
 ### 2. Configure your DNS provider

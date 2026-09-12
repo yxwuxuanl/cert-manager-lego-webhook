@@ -35,6 +35,10 @@ main() {
 
   cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+  local expected_image
+  expected_image=$(helm template verify charts/templates --show-only templates/webhook.yaml | awk '/^[[:space:]]*image:/ {gsub(/"/, "", $2); print $2}')
+  test -n "$expected_image"
+
   helm upgrade --install cert-manager oci://quay.io/jetstack/charts/cert-manager \
     --version v1.21.1 --namespace cert-manager --create-namespace \
     --set crds.enabled=true --wait --timeout 5m
@@ -60,6 +64,7 @@ main() {
   helm upgrade "$release" charts/templates --namespace "$namespace" \
     --reuse-values --wait --timeout 5m
   kubectl rollout status deployment/"$release" -n "$namespace" --timeout=2m
+  test "$expected_image" = "$(kubectl get deployment "$release" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   wait_for_api lego.dns-solver
 
   # An upgrade must preserve the Deployment identity and the existing serving CA.
@@ -78,6 +83,7 @@ main() {
     --set certManager.namespace=cert-manager \
     --set certManager.serviceAccountName=cert-manager \
     --wait --timeout 5m
+  test "$expected_image" = "$(kubectl get deployment "$fresh" -n "$fresh" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   wait_for_api fresh.lego.dns-solver
 }
 

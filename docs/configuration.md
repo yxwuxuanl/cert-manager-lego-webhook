@@ -119,8 +119,9 @@ See [values.yaml](../charts/templates/values.yaml) for the complete set of defau
 | `webhook.dnsConfig` | `{}` | Custom pod DNS configuration; setting it switches `dnsPolicy` to `None`. |
 
 Starting with chart 1.5.1, the deployment uses `webhook.image.tag`, falling back
-to `v<appVersion>`. Chart 1.5.1 therefore continues to deploy webhook v1.5.0.
-Chart-only fixes no longer require a new application image.
+to `v<appVersion>`. Chart **1.6.0** sets `appVersion: "1.6.0"` and deploys
+webhook **v1.6.0** by default. An explicit image tag overrides that default;
+chart-only fixes can keep the same application image.
 
 Value types and unknown chart configuration keys are validated before rendering.
 Environment variable values must be strings, and a nonempty `webhook.dnsConfig`
@@ -152,3 +153,5 @@ helm upgrade cert-manager-lego-webhook \
 
 Replace `CHART_VERSION` and `my-values.yaml` before running the command. After
 upgrading, verify webhook availability and a staging certificate issuance.
+For version 1.6.0, remove any older `webhook.image.tag` from your saved values,
+or pass `--set webhook.image.tag=` to select the chart's default v1.6.0 image.

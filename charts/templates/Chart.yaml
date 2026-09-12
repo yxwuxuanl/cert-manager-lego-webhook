@@ -2,9 +2,9 @@ apiVersion: v2
 name: cert-manager-lego-webhook
 description: A cert-manager DNS-01 webhook supporting multiple DNS providers through lego.
 type: application
-version: 1.5.1
+version: 1.6.0
 # The webhook version; chart-only releases can keep the same application image.
-appVersion: "1.5.0"
+appVersion: "1.6.0"
 home: https://github.com/yxwuxuanl/cert-manager-lego-webhook
 sources:
   - https://github.com/yxwuxuanl/cert-manager-lego-webhook

@@ -76,6 +76,13 @@ changes, bump `Chart.yaml`'s `version` while keeping `appVersion` at the existin
 webhook version. For a new application release, publish its `v<appVersion>` image
 before publishing a chart that selects it.
 
+To release matching chart and image versions, set both `version` and `appVersion`
+to the release number and update the chart tests and installation docs. Commit
+the changes, then push only the `v<appVersion>` tag on that commit to trigger the
+image workflow. After the image build succeeds and the tag exists in GHCR, push
+the same commit to `main` to trigger chart validation and publication. The cluster
+checks verify that upgrades and fresh installations select the expected image.
+
 ## Pull requests
 
 - Keep changes focused and format changed Go files with `gofmt`.

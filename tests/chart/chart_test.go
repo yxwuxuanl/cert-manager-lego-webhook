@@ -93,8 +93,8 @@ func TestDefaultDeployment(t *testing.T) {
 	deployment := decode[appsv1.Deployment](t, docs, "Deployment/dev")
 	pod := deployment.Spec.Template.Spec
 	container := pod.Containers[0]
-	if container.Image != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v1.5.0" {
-		t.Fatalf("chart maintenance release changed the application image: %s", container.Image)
+	if container.Image != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v1.6.0" {
+		t.Fatalf("unexpected default application image: %s", container.Image)
 	}
 	if deployment.Spec.Selector.MatchLabels["app"] != "dev" || deployment.Spec.Template.Labels["app"] != "dev" {
 		t.Fatal("existing Deployment selector and Pod labels must be preserved for upgrades")
@@ -149,10 +149,10 @@ func TestChartVersionDoesNotChangeImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	deployment := decode[appsv1.Deployment](t, render(t, copyPath, ""), "Deployment/dev")
-	if got := deployment.Spec.Template.Spec.Containers[0].Image; got != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v1.5.0" {
+	if got := deployment.Spec.Template.Spec.Containers[0].Image; got != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v1.6.0" {
 		t.Fatalf("chart-only version bump changed image: %s", got)
 	}
-	metadata["appVersion"] = "1.5.99"
+	metadata["appVersion"] = "9.9.8"
 	data, err = yaml.Marshal(metadata)
 	if err != nil {
 		t.Fatal(err)
@@ -161,7 +161,7 @@ func TestChartVersionDoesNotChangeImage(t *testing.T) {
 		t.Fatal(err)
 	}
 	deployment = decode[appsv1.Deployment](t, render(t, copyPath, ""), "Deployment/dev")
-	if got := deployment.Spec.Template.Spec.Containers[0].Image; got != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v1.5.99" {
+	if got := deployment.Spec.Template.Spec.Containers[0].Image; got != "ghcr.io/yxwuxuanl/cert-manager-lego-webhook:v9.9.8" {
 		t.Fatalf("application version bump did not update the default image: %s", got)
 	}
 }
