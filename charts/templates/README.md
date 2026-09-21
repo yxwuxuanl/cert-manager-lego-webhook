@@ -15,7 +15,7 @@ helm repo add cert-manager-lego-webhook https://yxwuxuanl.github.io/cert-manager
 helm repo update
 helm upgrade --install cert-manager-lego-webhook \
   cert-manager-lego-webhook/cert-manager-lego-webhook \
-  --version 1.6.0 \
+  --version 1.6.1 \
   --namespace cert-manager --create-namespace \
   --set certManager.namespace=cert-manager \
   --set certManager.serviceAccountName=cert-manager \
@@ -50,10 +50,17 @@ The chart validates value types and rejects unknown top-level, `webhook`, image,
 and `certManager` keys. `global` and `tags` are accepted for use in parent charts.
 Kubernetes-specific objects still need to satisfy the Kubernetes API schema.
 
+## Upgrading to 1.6.1
+
+This release updates lego to v5.5.1, including the Websupport/Active24 DNS
+challenge cleanup fix. Existing provider credentials and webhook configuration
+remain applicable. The fix removes records for the current challenge; it does
+not automatically remove records left behind by earlier challenges.
+
 ## Upgrading from 1.5.x
 
-Chart **1.6.0** uses webhook image **v1.6.0** by default. Both `version` and
-`appVersion` are `1.6.0`. The default image follows `appVersion`, while an explicit
+Chart **1.6.1** uses webhook image **v1.6.1** by default. Both `version` and
+`appVersion` are `1.6.1`. The default image follows `appVersion`, while an explicit
 `webhook.image.tag` takes precedence. If your saved values pin an older image,
 remove that override or pass `--set webhook.image.tag=` to use the chart default.
 
