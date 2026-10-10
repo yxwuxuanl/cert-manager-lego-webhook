@@ -51,7 +51,7 @@ helm repo update
 
 helm upgrade --install cert-manager-lego-webhook \
   cert-manager-lego-webhook/cert-manager-lego-webhook \
-  --version 1.6.1 \
+  --version 1.6.2 \
   --namespace cert-manager \
   --create-namespace \
   --set certManager.namespace=cert-manager \
@@ -59,7 +59,7 @@ helm upgrade --install cert-manager-lego-webhook \
   --wait --timeout 5m
 ```
 
-These commands install chart **1.6.1** with webhook image **v1.6.1**. To select
+These commands install chart **1.6.2** with webhook image **v1.6.2**. To select
 another release, change `--version`. See the
 [Helm options](docs/configuration.md#helm-values) for image, scheduling, and DNS settings.
 
